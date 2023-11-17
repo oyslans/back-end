@@ -9,7 +9,7 @@ import websockets
 import pyodbc as odbccon
 
 conn = odbccon.connect("Driver={SQL Server Native Client 11.0};"
-                       "Server=OYSSLANS-ANMGDP\OYSSQLSERVER;"
+                       "Server=OYSSLANS-ANMGDP\\OYSSQLSERVER;"
                        "Database=FAS_DB;"
                        "Trusted_Connection=yes;"
                        )
@@ -41,12 +41,11 @@ async def websocket_handler(websocket, path):
 
 # RECOGNIZE FUNCTION
 def recognize_face(message):
+    print("bro",message)
     if message == "":
         pass
     elif message == "Sign-in":
-        cursor.execute(
-            f"update tblAttendance set att_type = 'Sign-in' where att_id = (SELECT TOP (1) att_id FROM tblAttendance "
-            f"ORDER BY att_id DESC)")
+        cursor.execute("update [FAS_DB].[dbo].[tblAttendance] set att_type = 'Sign-in' where att_id = (SELECT TOP (1) att_id FROM [FAS_DB].[dbo].[tblAttendance] ORDER BY att_id DESC)")
         cursor.commit()
         print('status recorded in db')
     elif message == "Sign-out":
@@ -86,7 +85,7 @@ def recognize_face(message):
 
             if not len(encodeCurrentFrame) > 0:
                 print('No face in screen bro')
-                return {"status": False, "message": "No Face Detected", "data": 0, "id": "", "name": ""}
+                return {"status": False, "message": "No Face Detected", "data": 0}
 
             global counter
             global id
@@ -97,10 +96,10 @@ def recognize_face(message):
 
                 matchIndex = np.argmin(faceDis)  # get minimum index nearly to 0
 
-                if matches.count(True) == 0:
+                # if matches.count(True) == 0:
                     # counter = 3
                     # print("not recognized")
-                    return {"status": True, "message": "No Face Detected", "data": 4, "id": "", "name": ""}
+                    # return {"status": True, "message": "No Face Detected", "data": 4, "id": "", "name": ""}
 
                 if matches[matchIndex]:
 
@@ -111,24 +110,24 @@ def recognize_face(message):
 
             if counter != 0:
 
-                if counter > 2:
-                    counter = 0
-                    print('no face')
-                    return {"status": True, "message": "No Face Detected", "data": 3, "id": id, "name": ""}
+                # if counter > 2:
+                #     counter = 0
+                #     print('no face')
+                #     return {"status": True, "message": "No Face Detected", "data": 3, "id": id, "name": ""}
 
                 if counter == 1:
 
                     # Getting specific user data
                     userRecord = cursor.execute(f"select * from tblEmployees where emp_id='{id}'")
                     user = userRecord.fetchone()
-                    print("Detected : ", user[1])
-
-                    total = (datetime.now() - user[6])
-                    if total.total_seconds() < 120:
+                    print("Detected : ", user[2])
+                    print(user)
+                    total = (datetime.now() - user[7])
+                    if total.total_seconds() < 20:
                         print(total.total_seconds())
                         counter = 3
                         print("already marked")
-                        return {"status": True, "message": "", "data": 1, "id": id, "name": ""}
+                        return {"status": True, "message": "", "data": 1}
                     else:
 
                         currentDateObj = datetime.now().strftime("%m-%d-%y %H:%M:%S")
@@ -140,8 +139,6 @@ def recognize_face(message):
                     counter += 1
                     print("success")
 
-
-
                     # Getting last attendance status from STATUS TABLE
                     attendanceRecord = cursor.execute(f"SELECT TOP (1) last_status FROM tblLastStatus where "
                                                       f"FK_emp_id='{id}' ORDER BY id DESC")
@@ -149,10 +146,11 @@ def recognize_face(message):
                     print(lastAttendance[0][0])
                     if not lastAttendance:
                         return {"status": True, "message": "Recognition successful", "data": 2, "id": id,
-                                "name": user[1],
+                                "name": user[2],
                                 "lastatt": None}
                     else:
-                        return {"status": True, "message": "Recognition successful", "data": 2, "id": id, "name": user[1],
+                        return {"status": True, "message": "Recognition successful", "data": 2, "id": id,
+                                "name": user[2],
                                 "lastatt": lastAttendance[0][0]}
                 counter += 1
         except Exception as e:
