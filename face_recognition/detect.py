@@ -23,8 +23,6 @@ encodeListKnown, studentsIds = encodeListKnownWithIds
 id = 0
 counter = 0
 imageCounter = 1
-detect_counter = 0
-
 
 # WEBSOCKET
 async def websocket_handler(websocket, path):
@@ -34,45 +32,49 @@ async def websocket_handler(websocket, path):
             await websocket.send(json.dumps(response))
     except Exception as e:
         print(e)
-        # if str(e) == ' sent 1011 (unexpected error) keepalive ping timeout; no close frame received':
-        #     print('Reconnecting ..')
-        # if str(e) == 'received 1005 (no status code [internal]); then sent 1005 (no status code [internal])':
-        #     print('Reconnecting ..')
+        if str(e) == ' sent 1011 (unexpected error) keepalive ping timeout; no close frame received':
+            print('Waiting  ..')
+        if str(e) == 'received 1005 (no status code [internal]); then sent 1005 (no status code [internal])':
+            print('Waiting ..')
 
 
 # RECOGNIZE FUNCTION
 def recognize_face(message):
     # print('Incoming meesage : ',message)
-    global detect_counter
+
     if message == "":
 
         pass
 
     elif message == "Sign-in":
         cursor.execute(
-            "update [FAS_DB].[dbo].[tblAttendance] set att_type = 'Sign-in' where att_id = (SELECT TOP (1) att_id FROM [FAS_DB].[dbo].[tblAttendance] ORDER BY att_id DESC)")
+            "update [FAS_DB].[dbo].[tblAttendance] set att_type = 'Sign-in' where att_id = (SELECT TOP (1) att_id "
+            "FROM [FAS_DB].[dbo].[tblAttendance] ORDER BY att_id DESC)")
         cursor.commit()
         print('status recorded in db')
-        detect_counter = 0
+
         return {"status": True, "message": "No Face Detected", "data": 3, "lastatt": "", "name": ""}
     elif message == "Sign-out":
         cursor.execute(
-            "update [FAS_DB].[dbo].[tblAttendance] set att_type = 'Sign-out' where att_id = (SELECT TOP (1) att_id FROM [FAS_DB].[dbo].[tblAttendance] ORDER BY att_id DESC)")
+            "update [FAS_DB].[dbo].[tblAttendance] set att_type = 'Sign-out' where att_id = (SELECT TOP (1) att_id "
+            "FROM [FAS_DB].[dbo].[tblAttendance] ORDER BY att_id DESC)")
         cursor.commit()
         print('status recorded in db')
-        detect_counter = 0
+
     elif message == "Lunch-in":
         cursor.execute(
-            "update [FAS_DB].[dbo].[tblAttendance] set att_type = 'Lunch-in' where att_id = (SELECT TOP (1) att_id FROM [FAS_DB].[dbo].[tblAttendance] ORDER BY att_id DESC)")
+            "update [FAS_DB].[dbo].[tblAttendance] set att_type = 'Lunch-in' where att_id = (SELECT TOP (1) att_id "
+            "FROM [FAS_DB].[dbo].[tblAttendance] ORDER BY att_id DESC)")
         cursor.commit()
         print('status recorded in db')
-        detect_counter = 0
+
     elif message == "Lunch-out":
         cursor.execute(
-            "update [FAS_DB].[dbo].[tblAttendance] set att_type = 'Lunch-in' where att_id = (SELECT TOP (1) att_id FROM [FAS_DB].[dbo].[tblAttendance] ORDER BY att_id DESC)")
+            "update [FAS_DB].[dbo].[tblAttendance] set att_type = 'Lunch-out' where att_id = (SELECT TOP (1) att_id "
+            "FROM [FAS_DB].[dbo].[tblAttendance] ORDER BY att_id DESC)")
         cursor.commit()
         print('status recorded in db')
-        detect_counter = 0
+
     else:
         global imageCounter
         if message:
@@ -85,10 +87,8 @@ def recognize_face(message):
             # Get Face Location
             faceCurrentFrame = face_recognition.face_locations(unknown_picture)
 
-
             # Encode Current Frame
             encodeCurrentFrame = face_recognition.face_encodings(unknown_picture, faceCurrentFrame)
-
 
             if not len(encodeCurrentFrame) > 0:
                 print('No face Detected')
@@ -129,8 +129,6 @@ def recognize_face(message):
                     user = userRecord.fetchone()
                     print("Detected : ", user[2])
 
-
-
                     total = (datetime.now() - user[7])
                     if total.total_seconds() < 20:
                         print("Already Marked")
@@ -150,17 +148,18 @@ def recognize_face(message):
                         # counter += 1
 
                         # Getting last attendance status from STATUS TABLE
-                        attendanceRecord = cursor.execute(f"SELECT TOP (1) last_status FROM tblLastStatus where "
-                                                          f"FK_emp_id='{id}' ORDER BY id DESC")
+                        attendanceRecord = cursor.execute(f"SELECT TOP (1) att_type FROM tblEmployees where "
+                                                          f"emp_id='{id}' ORDER BY id DESC")
                         lastAttendance = attendanceRecord.fetchall()
-                        print("Last Attendance : ",lastAttendance[0][0])
+                        print("Last Attendance : ", lastAttendance[0][0])
                         # if not lastAttendance:
                         #     return {"status": True, "message": "Recognition successful", "data": 2, "id": id,
                         #             "name": user[2],
                         #             "lastatt": None}
                         # else:
                         print("here10")
-                        return {"status": True, "message": "Recognition successful", "data": 2, "id": id, "name": user[2], "lastatt": lastAttendance[0][0]}
+                        return {"status": True, "message": "Recognition successful", "data": 2, "id": id,
+                                "name": user[2], "lastatt": lastAttendance[0][0]}
                 # counter += 1
                 counter = 0
         except Exception as e:
@@ -171,7 +170,7 @@ if __name__ == '__main__':
     print("\n+==================+\n|  SERVER STARTED  |\n+==================+\n")
     loop = asyncio.get_event_loop()
     loop.run_until_complete(
-        websockets.serve(websocket_handler, "0.0.0.0", 8765)
+        websockets.serve(websocket_handler, "localhost", 8765)
     )
     loop.run_forever()
 
